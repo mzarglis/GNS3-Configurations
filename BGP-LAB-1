@@ -1,0 +1,1240 @@
+##########R1#################
+
+ipv6 unicast-routing
+
+interface lo0
+ ip address 10.1.1.1 255.255.255.255
+ ipv6 address 1::1/128
+ no shut
+
+interface FastEthernet1/0
+ ip address 10.0.1.1 255.255.255.252
+ ipv6 address FC00:0001::/127
+ description To-R3
+ no shut
+
+interface FastEthernet5/0
+ ip address 192.168.1.1 255.255.255.0
+ ipv6 address 2001:1::1/120
+ description To-LAN1
+ no shut
+
+interface FastEthernet6/0
+ ip address 10.0.2.1 255.255.255.252
+ ipv6 address FC00:0002::/127
+ description To-J1
+ no shut
+
+ router bgp 1
+ no auto-summary
+ no synchronization
+ bgp router-id 10.1.1.1
+ bgp log-neighbor-changes
+
+
+ network 192.168.1.0 mask 255.255.255.0
+ 
+ neighbor 10.0.1.2 remote-as 3
+ neighbor 10.0.2.2 remote-as 3
+
+ neighbor FC00:0001::1 remote-as 3
+ neighbor FC00:0002::1 remote-as 3
+
+ address-family ipv6
+ neighbor FC00:0001::1 activate
+ neighbor FC00:0002::1 activate
+ network 2001:1::/120
+
+
+##########J1#################
+set system root-authentication encrypted-password "$1$hXdd35Ig$cEsRLtDHGpM5e44caHhVU."
+set system host-name J1
+
+set interfaces lo0.0 family inet address 10.11.11.11/32
+set interfaces lo0.0 family inet6 address 11::1/128
+
+set interfaces em0.0 family inet  address 10.0.9.2/30
+set interfaces em0.0 family inet6 address FC00:0009::1/127
+set interfaces em0.0 description To-R4
+
+set interfaces em1.0 family inet  address 10.0.4.2/30
+set interfaces em1.0 family inet6 address FC00:0004::1/127
+set interfaces em1.0 description To-R3
+
+set interfaces em3.0 family inet  address 10.0.18.1/30
+set interfaces em3.0 family inet6 address FC00:0012::/127
+set interfaces em3.0 description To-J5
+
+set interfaces em4.0 family inet  address 10.0.5.2/30
+set interfaces em4.0 family inet6 address FC00:0005::1/127
+set interfaces em4.0 description To-J2
+
+set interfaces em5.0 family inet  address 10.0.10.2/30
+set interfaces em5.0 family inet6 address FC00:000A::1/127
+set interfaces em5.0 description To-J3
+
+set interfaces em6.0 family inet  address 10.0.2.2/30
+set interfaces em6.0 family inet6 address FC00:0002::1/127
+set interfaces em6.0 description To-R1  
+
+set protocols ospf area 0.0.0.0 interface lo0.0
+set protocols ospf area 0.0.0.0 interface em0.0
+set protocols ospf area 0.0.0.0 interface em1.0
+set protocols ospf area 0.0.0.0 interface em3.0
+set protocols ospf area 0.0.0.0 interface em5.0
+
+set protocols ospf3 area 0.0.0.0 interface lo0.0
+set protocols ospf3 area 0.0.0.0 interface em0.0
+set protocols ospf3 area 0.0.0.0 interface em1.0
+set protocols ospf3 area 0.0.0.0 interface em3.0
+set protocols ospf3 area 0.0.0.0 interface em5.0
+
+
+set routing-options autonomous-system 3
+set routing-options router-id 10.11.11.11
+
+set protocols bgp group TO_AS1 type external
+set protocols bgp group TO_AS1 export [LOCAL TRANSIT]
+set protocols bgp group TO_AS1 neighbor 10.0.2.1 peer-as 1
+
+set protocols bgp group TO_AS1_IPV6 type external
+set protocols bgp group TO_AS1_IPV6 neighbor FC00:0002::0 peer-as 1
+set protocols bgp group TO_AS1_IPV6 family inet6 unicast
+set protocols bgp group TO_AS1_IPV6 export [LOCAL_IPV6 TRANSIT]
+
+set protocols bgp group TO_AS4 type external
+set protocols bgp group TO_AS4 export [LOCAL TRANSIT]
+set protocols bgp group TO_AS4 neighbor 10.0.5.1 peer-as 4
+
+set protocols bgp group TO_AS4_IPV6 type external
+set protocols bgp group TO_AS4_IPV6 neighbor FC00:0005:: peer-as 4
+set protocols bgp group TO_AS4_IPV6 family inet6 unicast
+set protocols bgp group TO_AS4_IPV6 export [LOCAL_IPV6 TRANSIT]
+
+set protocols bgp group IBGP type internal
+set protocols bgp group IBGP local-address 10.11.11.11
+set protocols bgp group IBGP neighbor 10.4.4.4
+set protocols bgp group IBGP export NEXT_HOP
+
+set protocols bgp group IBGP_IPV6 type internal
+set protocols bgp group IBGP_IPV6 local-address 11::1
+set protocols bgp group IBGP_IPV6 neighbor 1::4
+set protocols bgp group IBGP_IPV6 export NEXT_HOP
+
+
+set policy-options policy-statement LOCAL term 1 from route-filter 192.168.4.0/24 exact
+set policy-options policy-statement LOCAL term 1 then accept
+set policy-options policy-statement LOCAL term 2 from route-filter 192.168.5.0/24 exact
+set policy-options policy-statement LOCAL term 2 then accept
+
+set policy-options policy-statement LOCAL_IPV6 term 1 from route-filter 2001:4::/120 exact
+set policy-options policy-statement LOCAL_IPV6 term 1 then accept
+set policy-options policy-statement LOCAL_IPV6 term 2 from route-filter 2001:5::/120 exact
+set policy-options policy-statement LOCAL_IPV6 term 2 then accept
+
+set policy-options policy-statement TRANSIT term 1 from protocol bgp
+set policy-options policy-statement TRANSIT term 1 then accept
+
+set policy-options policy-statement NEXT_HOP from protocol bgp
+set policy-options policy-statement NEXT_HOP then next-hop self
+set policy-options policy-statement NEXT_HOP then accept
+
+##########R2#################
+ipv6 unicast-routing
+
+interface lo0
+ ip address 10.2.2.2 255.255.255.255
+ ipv6 address 1::2/128
+ ipv6 ospf 1 area 0
+ no shut
+
+interface FastEthernet0/0
+ ip address 10.0.3.1 255.255.255.252
+ ipv6 address FC00:0003::/127
+ description To-R3
+ no shut
+
+interface FastEthernet1/0
+ ip address 10.0.6.1 255.255.255.252
+ ipv6 address FC00:0006::/127
+ ipv6 ospf 1 area 0
+ description To-R5
+ no shut
+
+interface FastEthernet6/0
+ ip address 192.168.2.1 255.255.255.0
+ ipv6 address 2001:0002::1/120
+ description To-LAN2
+ no shut
+
+ router ospf 1
+ router-id 10.2.2.2
+ log-adjacency-changes
+ network 10.2.2.2 0.0.0.0 area 0
+ network 10.0.6.0 0.0.0.3 area 0
+
+router ospfv3 1
+  router-id 10.2.2.2
+ log-adjacency-changes
+ 
+
+ router bgp 2
+ no auto-summary
+ no synchronization
+ bgp router-id 10.2.2.2
+ bgp log-neighbor-changes
+ network 192.168.2.0 mask 255.255.255.0
+ 
+ neighbor 10.5.5.5 remote-as 2
+ neighbor 10.5.5.5 update-source lo0
+ neighbor 10.5.5.5 next-hop-self 
+ neighbor 10.0.3.2 remote-as 3
+ neighbor 1::5 remote-as 2  
+ neighbor 1::5 update-source lo0
+ neighbor FC00:0003::1 remote-as 3
+
+
+ address-family ipv6
+ neighbor FC00:0003::1 activate
+ neighbor 1::5 activate
+ network 2001:2::/120
+ 
+
+ ##########J2#################
+set system root-authentication encrypted-password "$1$hXdd35Ig$cEsRLtDHGpM5e44caHhVU."
+set system host-name J2
+
+set interfaces lo0.0 family inet address 10.22.22.22/32
+set interfaces lo0.0 family inet6 address 11::2/128
+
+
+set interfaces em4.0 family inet address 10.0.5.1/30
+set interfaces em4.0 family inet6 address FC00:0005::/127
+set interfaces em4.0 description To-J1
+
+set interfaces em5.0 family inet address 192.168.6.1/24
+set interfaces em5.0 family inet6 address 2001:6::1/120
+set interfaces em5.0 description To-LAN6
+
+
+
+set routing-options autonomous-system 4
+set routing-options router-id 10.22.22.22
+
+set protocols bgp group TO_AS3 type external
+set protocols bgp group TO_AS3 export LOCAL
+set protocols bgp group TO_AS3 neighbor 10.0.5.2 peer-as 3
+
+set protocols bgp group TO_AS3_IPV6 type external
+set protocols bgp group TO_AS3_IPV6 neighbor FC00:0005::1 peer-as 3
+set protocols bgp group TO_AS3_IPV6 family inet6 unicast
+set protocols bgp group TO_AS3_IPV6 export LOCAL_IPV6
+
+set policy-options policy-statement LOCAL term 1 from route-filter 192.168.6.0/24 exact
+set policy-options policy-statement LOCAL term 1 then accept
+
+
+set policy-options policy-statement LOCAL_IPV6 term 1 from route-filter 2001:6::/120 exact
+set policy-options policy-statement LOCAL_IPV6 term 1 then accept
+
+
+set policy-options policy-statement TRANSIT term 1 from protocol bgp
+set policy-options policy-statement TRANSIT term 1 then accept
+
+
+##########R3#################
+ipv6 unicast-routing
+
+interface lo0
+ ip address 10.3.3.3 255.255.255.255
+ ipv6 address 1::3/128
+ ipv6 ospf 1 area 0
+ no shut
+
+interface FastEthernet0/0
+ ip address 10.0.3.2 255.255.255.252
+ ipv6 address FC00:0003::1/127
+ description To-R2
+ no shut
+
+interface FastEthernet1/0
+ ip address 10.0.1.2 255.255.255.252
+ ipv6 address FC00:0001::1/127
+ description To-R1
+ no shut
+
+ interface FastEthernet2/0
+ ip address 10.0.7.2 255.255.255.252
+ ipv6 address FC00:0007::1/127
+ ipv6 ospf 1 area 0
+ description To-R6
+ no shut
+
+interface FastEthernet3/0
+ ip address 10.0.8.2 255.255.255.252
+ ipv6 address FC00:0008::1/127
+ ipv6 ospf 1 area 0 
+ description To-R4
+ no shut
+
+ interface FastEthernet4/0
+ ip address 10.0.4.1 255.255.255.252
+ ipv6 address FC00:0004::/127
+ ipv6 ospf 1 area 0
+ description To-J1
+ no shut
+
+
+interface FastEthernet6/0
+ ip address 10.0.16.2 255.255.255.252
+ ipv6 address FC00:0010::1/127
+ ipv6 ospf 1 area 0
+ description To-R7
+ no shut
+
+router ospf 1
+ router-id 10.3.3.3
+ log-adjacency-changes
+ network 10.3.3.3 0.0.0.0 area 0
+ network 10.0.4.0 0.0.0.3 area 0
+ network 10.0.7.0 0.0.0.3 area 0
+ network 10.0.8.0 0.0.0.3 area 0
+ network 10.0.16.0 0.0.0.3 area 0
+
+router ospfv3 1
+ router-id 10.3.3.3
+ log-adjacency-changes
+ 
+ router bgp 3
+ no auto-summary
+ no synchronization
+ bgp router-id 10.3.3.3
+ bgp log-neighbor-changes
+ 
+ neighbor 10.0.1.1 remote-as 1
+ neighbor 10.0.3.1 remote-as 2
+
+ neighbor 10.4.4.4 remote-as 3
+ neighbor 10.4.4.4 update-source lo0
+ neighbor 10.4.4.4 next-hop-self
+ 
+ neighbor 1::4 remote-as 3
+ neighbor 1::4 update-source lo0
+ 
+
+ neighbor FC00:0001:: remote-as 1
+ neighbor FC00:0003:: remote-as 2
+
+
+
+ address-family ipv6
+ neighbor 1::4 activate 
+ neighbor 1::4 next-hop-self
+ neighbor FC00:0001:: activate
+ neighbor FC00:0003:: activate
+ 
+
+##########J3#################
+set system root-authentication encrypted-password "$1$hXdd35Ig$cEsRLtDHGpM5e44caHhVU."
+set system host-name J3
+
+set interfaces lo0.0 family inet address 10.33.33.33/32
+set interfaces lo0.0 family inet6 address 11::3/128
+
+
+set interfaces em1.0 family inet  address 10.0.13.1/30
+set interfaces em1.0 family inet6 address FC00:000D::/127
+set interfaces em1.0 description To-R4
+
+set interfaces em3.0 family inet  address 10.0.17.1/30
+set interfaces em3.0 family inet6 address FC00:0011::/127
+set interfaces em3.0 description To-J7
+
+set interfaces em4.0 family inet  address 10.0.14.2/30
+set interfaces em4.0 family inet6 address FC00:000E::1/127
+set interfaces em4.0 description To-R6
+
+set interfaces em5.0 family inet  address 10.0.10.1/30
+set interfaces em5.0 family inet6 address FC00:000A::/127
+set interfaces em5.0 description To-J1
+
+set protocols ospf area 0.0.0.0 interface lo0.0
+set protocols ospf area 0.0.0.0 interface em1.0
+set protocols ospf area 0.0.0.0 interface em3.0
+set protocols ospf area 0.0.0.0 interface em4.0
+set protocols ospf area 0.0.0.0 interface em5.0
+
+set protocols ospf3 area 0.0.0.0 interface lo0.0
+set protocols ospf3 area 0.0.0.0 interface em1.0
+set protocols ospf3 area 0.0.0.0 interface em3.0
+set protocols ospf3 area 0.0.0.0 interface em4.0
+set protocols ospf3 area 0.0.0.0 interface em5.0
+
+
+set routing-options autonomous-system 3
+set routing-options router-id 10.33.33.33
+
+
+set protocols bgp group IBGP type internal
+set protocols bgp group IBGP local-address 10.33.33.33
+set protocols bgp group IBGP neighbor 10.4.4.4
+
+set protocols bgp group IBGP_IPV6 type internal
+set protocols bgp group IBGP_IPV6 local-address 11::3
+set protocols bgp group IBGP_IPV6 neighbor 1::4
+
+
+
+##########R4#################
+ipv6 unicast-routing
+
+interface lo0
+ ip address 10.4.4.4 255.255.255.255
+ ipv6 address 1::4/128
+ ipv6 ospf 1 area 0
+ no shut
+
+interface FastEthernet0/0
+ ip address 10.0.9.1 255.255.255.252
+ ipv6 address FC00:0009::/127
+ ipv6 ospf 1 area 0
+ description To-J1
+ no shut
+
+interface FastEthernet1/0
+ ip address 10.0.13.2 255.255.255.252
+ ipv6 address FC00:000D::1/127
+ ipv6 ospf 1 area 0
+ description To-J3
+ no shut
+
+interface FastEthernet3/0
+ ip address 10.0.8.1 255.255.255.252
+ ipv6 address FC00:0008::1/127
+ ipv6 ospf 1 area 0
+ description To-R4
+ no shut
+
+interface FastEthernet5/0
+ ip address 192.168.4.1 255.255.255.0
+ ipv6 address 2001:0004::1/120
+ ipv6 ospf 1 area 0
+ description Lan4
+ no shut
+
+interface FastEthernet6/0
+ ip address 10.0.12.1 255.255.255.252
+ ipv6 address FC00:000C::/127
+ ipv6 ospf 1 area 0
+ description To-R6
+ no shut
+
+
+ router ospf 1
+ router-id 10.4.4.4
+ log-adjacency-changes
+ network 10.4.4.4 0.0.0.0 area 0
+ network 10.0.8.0 0.0.0.3 area 0
+ network 10.0.9.0 0.0.0.3 area 0
+ network 10.0.12.0 0.0.0.3 area 0
+ network 10.0.13.0 0.0.0.3 area 0
+
+router ospfv3 1
+ router-id 10.4.4.4
+ log-adjacency-changes
+ 
+
+ router bgp 3
+ no auto-summary
+ no synchronization
+ bgp router-id 10.4.4.4
+ bgp log-neighbor-changes
+ 
+ network 192.168.4.0 mask 255.255.255.0
+ 
+ neighbor 10.11.11.11 remote-as 3
+ neighbor 10.11.11.11 route-reflector-client
+ neighbor 10.11.11.11 update-source Loopback0
+ neighbor 10.3.3.3 remote-as 3
+ neighbor 10.3.3.3 route-reflector-client
+ neighbor 10.3.3.3 update-source Loopback0
+ neighbor 10.6.6.6 remote-as 3
+ neighbor 10.6.6.6 route-reflector-client
+ neighbor 10.6.6.6 update-source Loopback0
+ neighbor 10.33.33.33 remote-as 3
+ neighbor 10.33.33.33 route-reflector-client
+ neighbor 10.33.33.33 update-source Loopback0
+ neighbor 10.44.44.44 remote-as 3
+ neighbor 10.44.44.44 route-reflector-client
+ neighbor 10.44.44.44 update-source Loopback0
+ 
+ neighbor 1::3 remote-as 3
+ neighbor 1::3 update-source Loopback0
+ neighbor 1::6 remote-as 3
+ neighbor 1::6 update-source Loopback0
+ neighbor 11::1 remote-as 3
+ neighbor 11::1 update-source Loopback0
+ neighbor 11::3 remote-as 3
+ neighbor 11::3 update-source Loopback0
+ neighbor 11::4 remote-as 3
+ neighbor 11::4 update-source Loopback0
+
+
+ address-family ipv6
+ network 2001:4::/120
+ neighbor 1::3 activate
+ neighbor 1::3 route-reflector-client
+ neighbor 1::6 activate
+ neighbor 1::6 route-reflector-client
+ neighbor 11::1 activate
+ neighbor 11::1 route-reflector-client
+ neighbor 11::3 activate
+ neighbor 11::3 route-reflector-client
+ neighbor 11::4 activate
+ neighbor 11::4 route-reflector-client
+
+##########J4#################
+set system root-authentication encrypted-password "$1$hXdd35Ig$cEsRLtDHGpM5e44caHhVU."
+set system host-name J4
+
+set interfaces lo0.0 family inet address 10.44.44.44/32
+set interfaces lo0.0 family inet6 address 11::4/128
+
+set interfaces em0.0 family inet  address 10.0.24.2/30
+set interfaces em0.0 family inet6 address FC00:0018::1/127
+set interfaces em0.0 description To-R7
+
+set interfaces em1.0 family inet  address 192.168.5.1/24
+set interfaces em1.0 family inet6 address 2001:5::1/120
+set interfaces em1.0 description To-LAN5
+
+set interfaces em3.0 family inet  address 10.0.23.2/30
+set interfaces em3.0 family inet6 address FC00:0017::1/127
+set interfaces em3.0 description To-R9
+
+set interfaces em4.0 family inet  address 10.0.25.1/30
+set interfaces em4.0 family inet6 address FC00:0019::/127
+set interfaces em4.0 description To-J5
+
+set interfaces em5.0 family inet  address 10.0.29.1/30
+set interfaces em5.0 family inet6 address FC00:001D::/127
+set interfaces em5.0 description To-J7
+
+set protocols ospf area 0.0.0.0 interface lo0.0
+set protocols ospf area 0.0.0.0 interface em0.0
+set protocols ospf area 0.0.0.0 interface em3.0
+set protocols ospf area 0.0.0.0 interface em4.0
+set protocols ospf area 0.0.0.0 interface em5.0
+
+set protocols ospf3 area 0.0.0.0 interface lo0.0
+set protocols ospf3 area 0.0.0.0 interface em0.0
+set protocols ospf3 area 0.0.0.0 interface em3.0
+set protocols ospf3 area 0.0.0.0 interface em4.0
+set protocols ospf3 area 0.0.0.0 interface em5.0
+
+set routing-options autonomous-system 3
+set routing-options router-id 10.44.44.44
+
+set protocols bgp group IBGP type internal
+set protocols bgp group IBGP local-address 10.44.44.44
+set protocols bgp group IBGP cluster 10.44.44.44
+set protocols bgp group IBGP neighbor 10.7.7.7
+set protocols bgp group IBGP neighbor 10.9.9.9
+set protocols bgp group IBGP neighbor 10.55.55.55
+set protocols bgp group IBGP neighbor 10.77.77.77
+set protocols bgp group IBGP neighbor 10.4.4.4
+set protocols bgp group IBGP export LOCAL
+
+set protocols bgp group IBGP_IPV6 type internal
+set protocols bgp group IBGP_IPV6 local-address 11::4
+set protocols bgp group IBGP_IPV6 cluster 10.44.44.44
+set protocols bgp group IBGP_IPV6 neighbor 1::7
+set protocols bgp group IBGP_IPV6 neighbor 11::5
+set protocols bgp group IBGP_IPV6 neighbor 11::7
+set protocols bgp group IBGP_IPV6 neighbor 1::4
+set protocols bgp group IBGP_IPV6 neighbor 1::9
+set protocols bgp group IBGP_IPv6 export LOCAL_IPV6
+
+
+set policy-options policy-statement LOCAL term 1 from route-filter 192.168.5.0/24 exact
+set policy-options policy-statement LOCAL term 1 then accept
+
+set policy-options policy-statement LOCAL_IPV6 term 1 from route-filter 2001:5::/120 exact
+set policy-options policy-statement LOCAL_IPV6 term 1 then accept
+
+
+
+
+
+
+##########R5#################
+ipv6 unicast-routing
+
+interface lo0
+ip address 10.5.5.5 255.255.255.255
+ipv6 address 1::5/128
+ipv6 ospf 1 area 0
+no shut
+
+interface FastEthernet0/0
+ ip address 10.0.11.2 255.255.255.252
+ ipv6 address FC00:000B::1/127
+ description To-R6
+ no shut
+
+interface FastEthernet1/0
+ ip address 10.0.6.2 255.255.255.252
+ ipv6 address FC00:0006::1/127
+ ipv6 ospf 1 area 0
+ description To-R5
+ no shut
+
+interface FastEthernet6/0
+ ip address 192.168.3.1 255.255.255.0
+ ipv6 address 2001:3::1/120
+ ipv6 ospf 1 area 0
+ description To-LAN3
+ no shut
+
+router ospf 1
+ router-id 10.5.5.5
+ log-adjacency-changes
+ network 10.5.5.5 0.0.0.0 area 0
+ network 192.168.3.0 0.0.0.255 area 0
+ network 10.0.6.0 0.0.0.3 area 0
+
+router ospfv3 1
+  router-id 10.5.5.5
+ log-adjacency-changes
+ 
+
+ router bgp 2
+ no auto-summary
+ no synchronization
+ bgp router-id 10.5.5.5
+ bgp log-neighbor-changes
+ 
+ network 192.168.3.0 mask 255.255.255.0
+
+ neighbor 10.2.2.2 remote-as 2
+ neighbor 10.2.2.2 update-source lo0
+ neighbor 10.0.11.1 remote-as 3
+ neighbor 1::2 remote-as 2
+ neighbor 1::2 update-source lo0
+ neighbor FC00:000B:: remote-as 3
+
+
+ address-family ipv6
+ neighbor FC00:000B:: activate
+ neighbor 1::2 activate
+ network 2001:3::/120
+
+##########J5#################
+set system root-authentication encrypted-password "$1$hXdd35Ig$cEsRLtDHGpM5e44caHhVU."
+set system host-name J5
+
+set interfaces lo0.0 family inet address 10.55.55.55/32
+set interfaces lo0.0 family inet6 address 11::5/128
+
+set interfaces em0.0 family inet  address 10.0.21.1/30
+set interfaces em0.0 family inet6 address FC00:0015::/127
+set interfaces em0.0 description To-J6
+
+set interfaces em1.0 family inet  address 10.0.26.1/30
+set interfaces em1.0 family inet6 address FC00:001A::/127
+set interfaces em1.0 description To-J7
+
+set interfaces em4.0 family inet  address 10.0.25.2/30
+set interfaces em4.0 family inet6 address FC00:0019::1/127
+set interfaces em4.0 description To-J4
+
+set interfaces em3.0 family inet  address 10.0.18.2/30
+set interfaces em3.0 family inet6 address FC00:0012::1/127
+set interfaces em3.0 description To-J1
+
+set interfaces em5.0 family inet  address 10.0.20.2/30
+set interfaces em5.0 family inet6 address FC00:0014::1/127
+set interfaces em5.0 description To-R7
+
+
+
+set protocols ospf area 0.0.0.0 interface lo0.0
+set protocols ospf area 0.0.0.0 interface em4.0
+set protocols ospf area 0.0.0.0 interface em1.0
+set protocols ospf area 0.0.0.0 interface em3.0
+set protocols ospf area 0.0.0.0 interface em5.0
+
+set protocols ospf3 area 0.0.0.0 interface lo0.0
+set protocols ospf3 area 0.0.0.0 interface em4.0
+set protocols ospf3 area 0.0.0.0 interface em1.0
+set protocols ospf3 area 0.0.0.0 interface em3.0
+set protocols ospf3 area 0.0.0.0 interface em5.0
+
+
+set routing-options autonomous-system 3
+set routing-options router-id 10.55.55.55
+
+set protocols bgp group TO_AS7 type external
+set protocols bgp group TO_AS7 export [LOCAL TRANSIT]
+set protocols bgp group TO_AS7 neighbor 10.0.21.2 peer-as 7
+
+set protocols bgp group TO_AS7_IPV6 type external
+set protocols bgp group TO_AS7_IPV6 neighbor FC00:0015::1 peer-as 7
+set protocols bgp group TO_AS7_IPV6 family inet6 unicast
+set protocols bgp group TO_AS7_IPV6 export [LOCAL_IPV6 TRANSIT]
+
+
+set protocols bgp group IBGP type internal
+set protocols bgp group IBGP local-address 10.55.55.55
+set protocols bgp group IBGP neighbor 10.44.44.44
+set protocols bgp group IBGP export NEXT_HOP
+
+set protocols bgp group IBGP_IPV6 type internal
+set protocols bgp group IBGP_IPV6 local-address 11::5
+set protocols bgp group IBGP_IPV6 neighbor 11::4
+set protocols bgp group IBGP_IPV6 export NEXT_HOP
+
+
+set policy-options policy-statement LOCAL term 1 from route-filter 192.168.4.0/24 exact
+set policy-options policy-statement LOCAL term 1 then accept
+set policy-options policy-statement LOCAL term 2 from route-filter 192.168.5.0/24 exact
+set policy-options policy-statement LOCAL term 2 then accept
+
+set policy-options policy-statement LOCAL_IPV6 term 1 from route-filter 2001:4::/120 exact
+set policy-options policy-statement LOCAL_IPV6 term 1 then accept
+set policy-options policy-statement LOCAL_IPV6 term 2 from route-filter 2001:5::/120 exact
+set policy-options policy-statement LOCAL_IPV6 term 2 then accept
+
+set policy-options policy-statement TRANSIT term 1 from protocol bgp
+set policy-options policy-statement TRANSIT term 1 then accept
+
+set policy-options policy-statement NEXT_HOP from protocol bgp
+set policy-options policy-statement NEXT_HOP then next-hop self
+set policy-options policy-statement NEXT_HOP then accept
+
+##########R6#################
+
+ipv6 unicast-routing
+
+interface lo0
+ip address 10.6.6.6 255.255.255.255
+ipv6 address 1::6/128
+ipv6 ospf 1 area 0
+no shut
+
+interface FastEthernet0/0
+ ip address 10.0.11.1 255.255.255.252
+ ipv6 address FC00:000B::/127
+ description To-R5
+ no shut
+
+interface FastEthernet2/0
+ ip address 10.0.7.1 255.255.255.252
+ ipv6 address FC00:0007::/127
+ ipv6 ospf 1 area 0
+ description To-R3
+ no shut
+
+ interface FastEthernet4/0
+ ip address 10.0.14.1 255.255.255.252
+ ipv6 address FC00:000E::/127
+ ipv6 ospf 1 area 0
+ description To-J3
+ no shut
+
+ interface FastEthernet5/0
+ ip address 10.0.15.1 255.255.255.252
+ ipv6 address FC00:000F::/127
+ ipv6 ospf 1 area 0
+ description To-R9
+ no shut
+
+interface FastEthernet6/0
+ ip address 10.0.12.2 255.255.255.252
+ ipv6 address FC00:000C::1/127
+ ipv6 ospf 1 area 0
+ description To-R4
+ no shut
+
+router ospf 1
+ router-id 10.6.6.6
+ log-adjacency-changes
+ network 10.6.6.6 0.0.0.0 area 0
+ network 10.0.7.0 0.0.0.3 area 0
+ network 10.0.12.0 0.0.0.3 area 0
+ network 10.0.14.0 0.0.0.3 area 0
+ network 10.0.15.0 0.0.0.3 area 0
+
+router ospfv3 1
+ router-id 10.6.6.6
+ log-adjacency-changes
+ 
+
+ router bgp 3
+ no auto-summary
+ no synchronization
+ bgp router-id 10.6.6.6
+ bgp log-neighbor-changes
+ 
+ neighbor 10.0.11.2 remote-as 2
+
+ neighbor 10.4.4.4 remote-as 3
+ neighbor 10.4.4.4 update-source lo0
+ neighbor 10.4.4.4 next-hop-self
+ 
+ 
+ neighbor FC00:000B::1 remote-as 2
+ neighbor 1::4 remote-as 3
+ neighbor 1::4 update-source lo0
+ 
+
+
+ address-family ipv6
+ neighbor FC00:000B::1 activate
+ neighbor 1::4 activate
+ neighbor 1::4 next-hop-self
+
+##########J6#################
+set system root-authentication encrypted-password "$1$hXdd35Ig$cEsRLtDHGpM5e44caHhVU."
+set system host-name J6
+
+set interfaces lo0.0 family inet address 10.66.66.66/32
+set interfaces lo0.0 family inet6 address 11::6/128
+
+set interfaces em0.0 family inet  address 10.0.21.2/30
+set interfaces em0.0 family inet6 address FC00:0015::1/127
+set interfaces em0.0 description To-J5
+
+set interfaces em1.0 family inet  address 10.0.27.1/30
+set interfaces em1.0 family inet6 address FC00:001B::/127
+set interfaces em1.0 description To-J8
+
+set interfaces em5.0 family inet  address 192.168.8.1/24
+set interfaces em5.0 family inet6 address 2001:8::1/120
+set interfaces em5.0 description To-Lan8
+
+set protocols ospf area 0.0.0.0 interface lo0.0
+set protocols ospf area 0.0.0.0 interface em1.0
+set protocols ospf3 area 0.0.0.0 interface lo0.0
+set protocols ospf3 area 0.0.0.0 interface em1.0
+
+set routing-options autonomous-system 7
+set routing-options router-id 10.66.66.66
+
+set protocols bgp group TO_AS3 type external
+set protocols bgp group TO_AS3 export LOCAL
+set protocols bgp group TO_AS3 neighbor 10.0.21.1 peer-as 3
+
+set protocols bgp group TO_AS3_IPV6 type external
+set protocols bgp group TO_AS3_IPV6 neighbor FC00:0015:: peer-as 3
+set protocols bgp group TO_AS3_IPV6 family inet6 unicast
+set protocols bgp group TO_AS3_IPV6 export LOCAL_IPV6
+
+set protocols bgp group IBGP type internal
+set protocols bgp group IBGP local-address 10.66.66.66
+set protocols bgp group IBGP neighbor 10.88.88.88
+set protocols bgp group IBGP export NEXT_HOP
+
+set protocols bgp group IBGP_IPV6 type internal
+set protocols bgp group IBGP_IPV6 local-address 11::6
+set protocols bgp group IBGP_IPV6 neighbor 11::8
+set protocols bgp group IBGP_IPV6 export NEXT_HOP
+
+
+set policy-options policy-statement LOCAL term 1 from route-filter 192.168.8.0/24 exact
+set policy-options policy-statement LOCAL term 1 then accept
+
+
+set policy-options policy-statement LOCAL_IPV6 term 1 from route-filter 2001:8::/120 exact
+set policy-options policy-statement LOCAL_IPV6 term 1 then accept
+
+
+set policy-options policy-statement TRANSIT term 1 from protocol bgp
+set policy-options policy-statement TRANSIT term 1 then accept
+
+set policy-options policy-statement NEXT_HOP from protocol bgp
+set policy-options policy-statement NEXT_HOP then next-hop self
+set policy-options policy-statement NEXT_HOP then accept
+
+
+
+##########R7#################
+
+  interface Loopback0
+ ip address 10.7.7.7 255.255.255.255
+ ipv6 address 1::7/128
+ ipv6 ospf 1 area 0
+
+interface FastEthernet0/0
+ description To-J4
+ ip address 10.0.24.1 255.255.255.252
+ duplex full
+ ipv6 address FC00:18::/127
+ ipv6 ospf 1 area 0
+
+interface FastEthernet1/0
+ description To-R9
+ ip address 10.0.19.1 255.255.255.252
+ duplex full
+ ipv6 address FC00:13::/127
+ ipv6 ospf 1 area 0
+
+ interface FastEthernet5/0
+ description To-J5
+ ip address 10.0.20.1 255.255.255.252
+ duplex full
+ ipv6 address FC00:14::/127
+ ipv6 ospf 1 area 0
+
+interface FastEthernet6/0
+ description To-R3
+ ip address 10.0.16.1 255.255.255.252
+ duplex full
+ ipv6 address FC00:10::/127
+ ipv6 ospf 1 area 0
+
+ router ospf 1
+ router-id 10.7.7.7
+ log-adjacency-changes
+ network 10.7.7.7 0.0.0.0 area 0
+ network 10.0.16.0 0.0.0.3 area 0
+ network 10.0.20.0 0.0.0.3 area 0
+ network 10.0.24.0 0.0.0.3 area 0
+ network 10.0.19.0 0.0.0.3 area 0
+
+router ospfv3 1
+ router-id 10.7.7.7
+ log-adjacency-changes
+ 
+ router bgp 3
+ no auto-summary
+ no synchronization
+ bgp router-id 10.7.7.7
+ bgp log-neighbor-changes
+ 
+ neighbor 10.44.44.44 remote-as 3
+ neighbor 10.44.44.44 update-source Loopback0
+ neighbor 11::4 remote-as 3
+ neighbor 11::4 update-source Loopback0
+
+ address-family ipv6
+ neighbor 11::4 activate
+ 
+
+##########J7#################
+set system root-authentication encrypted-password "$1$hXdd35Ig$cEsRLtDHGpM5e44caHhVU."
+set system host-name J7
+
+set interfaces lo0.0 family inet address 10.77.77.77/32
+set interfaces lo0.0 family inet6 address 11::7/128
+
+set interfaces em0.0 family inet  address 10.0.30.1/30
+set interfaces em0.0 family inet6 address FC00:001E::/127
+set interfaces em0.0 description To-J8
+
+set interfaces em1.0 family inet  address 10.0.26.2/30
+set interfaces em1.0 family inet6 address FC00:001A::1/127
+set interfaces em1.0 description To-J5
+
+set interfaces em3.0 family inet  address 10.0.17.2/30
+set interfaces em3.0 family inet6 address FC00:0011::1/127
+set interfaces em3.0 description To-J3
+
+set interfaces em4.0 family inet  address 10.0.32.1/30
+set interfaces em4.0 family inet6 address FC00:0020::/127
+set interfaces em4.0 description To-J9
+
+set interfaces em5.0 family inet  address 10.0.29.2/30
+set interfaces em5.0 family inet6 address FC00:001D::1/127
+set interfaces em5.0 description To-J4
+
+set interfaces em6.0 family inet  address 10.0.28.2/30
+set interfaces em6.0 family inet6 address FC00:001C::1/127
+set interfaces em6.0 description To-R9
+
+
+
+set protocols ospf area 0.0.0.0 interface lo0.0
+set protocols ospf area 0.0.0.0 interface em1.0
+set protocols ospf area 0.0.0.0 interface em1.0
+set protocols ospf area 0.0.0.0 interface em5.0
+set protocols ospf area 0.0.0.0 interface em6.0
+set protocols ospf3 area 0.0.0.0 interface lo0.0
+set protocols ospf3 area 0.0.0.0 interface em1.0
+set protocols ospf3 area 0.0.0.0 interface em1.0
+set protocols ospf3 area 0.0.0.0 interface em5.0
+set protocols ospf3 area 0.0.0.0 interface em6.0
+
+
+set routing-options autonomous-system 3
+set routing-options router-id 10.77.77.77
+
+set protocols bgp group TO_AS7 type external
+set protocols bgp group TO_AS7 export [LOCAL TRANSIT]
+set protocols bgp group TO_AS7 neighbor 10.0.30.2 peer-as 7
+
+set protocols bgp group TO_AS7_IPV6 type external
+set protocols bgp group TO_AS7_IPV6 neighbor FC00:001E::1 peer-as 7
+set protocols bgp group TO_AS7_IPV6 family inet6 unicast
+set protocols bgp group TO_AS7_IPV6 export [LOCAL_IPV6 TRANSIT]
+
+
+set protocols bgp group IBGP type internal
+set protocols bgp group IBGP local-address 10.77.77.77
+set protocols bgp group IBGP neighbor 10.44.44.44
+set protocols bgp group IBGP export NEXT_HOP
+
+set protocols bgp group IBGP_IPV6 type internal
+set protocols bgp group IBGP_IPV6 local-address 11::7
+set protocols bgp group IBGP_IPV6 neighbor 11::4
+set protocols bgp group IBGP_IPV6 export NEXT_HOP
+
+
+set policy-options policy-statement LOCAL term 1 from route-filter 192.168.4.0/24 exact
+set policy-options policy-statement LOCAL term 1 then accept
+set policy-options policy-statement LOCAL term 2 from route-filter 192.168.5.0/24 exact
+set policy-options policy-statement LOCAL term 2 then accept
+
+set policy-options policy-statement LOCAL_IPV6 term 1 from route-filter 2001:4::/120 exact
+set policy-options policy-statement LOCAL_IPV6 term 1 then accept
+set policy-options policy-statement LOCAL_IPV6 term 2 from route-filter 2001:5::/120 exact
+set policy-options policy-statement LOCAL_IPV6 term 2 then accept
+
+set policy-options policy-statement TRANSIT term 1 from protocol bgp
+set policy-options policy-statement TRANSIT term 1 then accept
+
+set policy-options policy-statement NEXT_HOP from protocol bgp
+set policy-options policy-statement NEXT_HOP then next-hop self
+set policy-options policy-statement NEXT_HOP then accept
+
+
+##########R8#################
+ipv6 unicast-routing
+
+interface lo0
+ip address 10.8.8.8 255.255.255.255
+ipv6 address 1::8/128
+no shut
+
+interface FastEthernet4/0
+ ip address 10.0.22.1 255.255.255.252
+ ipv6 address FC00:0016::/127
+ description To-R9
+ no shut
+
+interface FastEthernet6/0
+ ip address 192.168.7.1 255.255.255.0
+ ipv6 address 2001:7::1/120
+ description To-LAN7
+ no shut
+
+
+ router bgp 5
+ no auto-summary
+ no synchronization
+ bgp router-id 10.8.8.8
+ bgp log-neighbor-changes
+
+
+ network 192.168.7.0 mask 255.255.255.0
+ 
+ neighbor 10.0.22.2 remote-as 3
+ neighbor FC00:0016::1 remote-as 3
+
+ 
+
+ address-family ipv6
+ neighbor FC00:0016::1 activate
+ network 2001:7::/120
+
+
+##########J8#################
+set system root-authentication encrypted-password "$1$hXdd35Ig$cEsRLtDHGpM5e44caHhVU."
+set system host-name J8
+
+set interfaces lo0.0 family inet address 10.88.88.88/32
+set interfaces lo0.0 family inet6 address 11::8/128
+
+set interfaces em0.0 family inet  address 10.0.30.2/30
+set interfaces em0.0 family inet6 address FC00:001E::1/127
+set interfaces em0.0 description To-J7
+
+set interfaces em1.0 family inet  address 10.0.27.2/30
+set interfaces em1.0 family inet6 address FC00:001B::1/127
+set interfaces em1.0 description To-J6
+
+set interfaces em5.0 family inet  address 192.168.9.1/24
+set interfaces em5.0 family inet6 address 2001:9::1/120
+set interfaces em5.0 description To-Lan9
+
+set protocols ospf area 0.0.0.0 interface lo0.0
+set protocols ospf area 0.0.0.0 interface em1.0
+set protocols ospf3 area 0.0.0.0 interface lo0.0
+set protocols ospf3 area 0.0.0.0 interface em1.0
+
+
+set routing-options autonomous-system 7
+set routing-options router-id 10.88.88.88
+
+set protocols bgp group TO_AS3 type external
+set protocols bgp group TO_AS3 export LOCAL
+set protocols bgp group TO_AS3 neighbor 10.0.30.1 peer-as 3
+
+set protocols bgp group TO_AS3_IPV6 type external
+set protocols bgp group TO_AS3_IPV6 neighbor FC00:001E:: peer-as 3
+set protocols bgp group TO_AS3_IPV6 family inet6 unicast
+set protocols bgp group TO_AS3_IPV6 export LOCAL_IPV6
+
+set protocols bgp group IBGP type internal
+set protocols bgp group IBGP local-address 10.88.88.88
+set protocols bgp group IBGP neighbor 10.66.66.66
+set protocols bgp group IBGP export NEXT_HOP
+
+set protocols bgp group IBGP_IPV6 type internal
+set protocols bgp group IBGP_IPV6 local-address 11::8
+set protocols bgp group IBGP_IPV6 neighbor 11::6
+set protocols bgp group IBGP_IPV6 export NEXT_HOP
+
+set policy-options policy-statement LOCAL term 1 from route-filter 192.168.9.0/24 exact
+set policy-options policy-statement LOCAL term 1 then accept
+
+
+set policy-options policy-statement LOCAL_IPV6 term 1 from route-filter 2001:9::/120 exact
+set policy-options policy-statement LOCAL_IPV6 term 1 then accept
+
+set policy-options policy-statement NEXT_HOP from protocol bgp
+set policy-options policy-statement NEXT_HOP then next-hop self
+set policy-options policy-statement NEXT_HOP then accept
+
+
+
+
+##########R9#################
+ipv6 unicast-routing
+
+ interface Loopback0
+ ip address 10.9.9.9 255.255.255.255
+ ipv6 address 1::9/128
+ ipv6 ospf 1 area 0
+
+interface FastEthernet0/0
+ ip address 10.0.31.1 255.255.255.252
+ ipv6 address FC00:001F::/127
+ description To-J9
+ no shut
+
+interface FastEthernet1/0
+ ip address 10.0.19.2 255.255.255.252
+ ipv6 address FC00:0013::1/127
+ ipv6 ospf 1 area 0
+ description To-R7
+ no shut
+
+interface FastEthernet3/0
+ ip address 10.0.23.1 255.255.255.252
+ ipv6 address FC00:0017::/127
+ ipv6 ospf 1 area 0
+ description To-J4
+ no shut
+
+interface FastEthernet4/0
+ ip address 10.0.22.2 255.255.255.252
+ ipv6 address FC00:0016::1/127
+ description To-R8
+ no shut
+
+interface FastEthernet5/0
+ ip address 10.0.15.2 255.255.255.252
+ ipv6 address FC00:000F::1/127
+ ipv6 ospf 1 area 0
+ description To-R6
+ no shut
+
+ interface FastEthernet6/0
+ ip address 10.0.28.1 255.255.255.252
+ ipv6 address FC00:001C::/127
+ ipv6 ospf 1 area 0
+ description To-J7
+ no shut
+
+ router ospf 1
+ router-id 10.9.9.9
+ log-adjacency-changes
+ network 10.9.9.9 0.0.0.0 area 0
+ network 10.0.15.0 0.0.0.3 area 0
+ network 10.0.19.0 0.0.0.3 area 0
+ network 10.0.23.0 0.0.0.3 area 0
+ network 10.0.28.0 0.0.0.3 area 0
+
+router ospfv3 1
+ router-id 10.9.9.9
+ log-adjacency-changes
+ 
+ router bgp 3
+ no auto-summary
+ no synchronization
+ bgp router-id 10.9.9.9
+ bgp log-neighbor-changes
+ 
+ neighbor 10.0.22.1 remote-as 5
+ neighbor FC00:0016:: remote-as 5
+ neighbor 10.0.31.2 remote-as 6
+ neighbor FC00:001F::1 remote-as 6
+
+ neighbor 10.44.44.44 remote-as 3
+ neighbor 10.44.44.44 update-source lo0
+ neighbor 10.44.44.44 next-hop-self
+ 
+ neighbor 11::4 remote-as 3
+ neighbor 11::4 update-source lo0
+ 
+ address-family ipv6
+ neighbor FC00:0016:: activate
+ neighbor FC00:001F::1 activate ping 
+ neighbor 11::4 activate
+ neighbor 11::4 next-hop-self
+
+##########J9################
+
+set system root-authentication encrypted-password "$1$hXdd35Ig$cEsRLtDHGpM5e44caHhVU."
+set system host-name J9
+
+set interfaces lo0.0 family inet address 10.99.99.99/32
+set interfaces lo0.0 family inet6 address 11::9/128
+
+set interfaces em0.0 family inet  address 10.0.31.2/30
+set interfaces em0.0 family inet6 address FC00:001F::1/127
+set interfaces em0.0 description To-R9
+
+set interfaces em4.0 family inet  address 10.0.32.2/30
+set interfaces em4.0 family inet6 address FC00:0020::1/127
+set interfaces em4.0 description To-J7
+
+set interfaces em5.0 family inet  address 192.168.10.1/24
+set interfaces em5.0 family inet6 address 2001:A::1/120
+set interfaces em5.0 description To-Lan10
+
+
+set routing-options autonomous-system 6
+set routing-options router-id 10.99.99.99
+
+set protocols bgp group TO_AS3 type external
+set protocols bgp group TO_AS3 export LOCAL
+set protocols bgp group TO_AS3 neighbor 10.0.31.1 peer-as 3
+set protocols bgp group TO_AS3 neighbor 10.0.32.1 peer-as 3
+
+set protocols bgp group TO_AS3_IPV6 type external
+set protocols bgp group TO_AS3_IPV6 neighbor FC00:001F:: peer-as 3
+set protocols bgp group TO_AS3_IPV6 neighbor FC00:0020:: peer-as 3
+set protocols bgp group TO_AS3_IPV6 family inet6 unicast
+set protocols bgp group TO_AS3_IPV6 export LOCAL_IPV6
+
+set policy-options policy-statement LOCAL term 1 from route-filter 192.168.10.0/24 exact
+set policy-options policy-statement LOCAL term 1 then accept
+
+
+set policy-options policy-statement LOCAL_IPV6 term 1 from route-filter 2001:A::/120 exact
+set policy-options policy-statement LOCAL_IPV6 term 1 then accept
+
+
+
