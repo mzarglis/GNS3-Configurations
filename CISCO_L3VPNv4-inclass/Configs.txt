@@ -1,0 +1,310 @@
+host R1
+interface lo0
+ip add 10.1.1.1 255.255.255.255
+
+interface fa0/0
+ip add 192.168.1.1 255.255.255.0
+no shut
+
+int fa1/0
+ip address 10.0.15.1 255.255.255.252
+no shut
+
+router rip
+no auto-summary
+version 2
+network 10.0.0.0
+network 192.0.0.0
+
+
+host R2
+
+interface lo0
+ip add 10.2.2.2 255.255.255.255
+no shut
+
+interface fa0/0
+ip add 192.168.2.1 255.255.255.0
+no shut
+
+int fa2/0
+ip address 10.0.25.1 255.255.255.252
+no shut
+
+router ospf 1
+router-id 10.2.2.2
+log-adjacency-changes
+network 10.0.25.0 0.0.0.3 area 0
+network 10.2.2.2 0.0.0.0 area 0
+
+
+
+
+host r3
+
+interface lo0
+ip add 10.3.3.3 255.255.255.255
+no shut
+
+interface fa0/0
+ip add 192.168.3.1 255.255.255.0
+no shut
+
+int fa3/0
+ip add 10.0.35.1 255.255.255.252
+no shut
+
+router bgp 65001
+ no synchronization
+ bgp router-id 10.3.3.3
+ bgp log-neighbor-changes
+ network 192.168.3.0
+ neighbor 10.0.35.2 remote-as 65144
+ no auto-summary
+
+
+
+
+
+
+
+
+
+
+
+
+
+host R5-PE
+
+ip vrf VPN-A
+rd 65144:11
+route-target export 65144:11
+route-target import 65144:21
+exit 
+
+ip vrf VPN-B
+rd 65144:12
+route-target export 65144:12
+route-target import 65144:22
+exit 
+
+ip vrf VPN-C
+rd 65144:13
+route-target export 65144:13
+route-target import 65144:23
+exit 
+
+interface lo0
+ip add 10.5.5.5 255.255.255.255
+
+interface lo1
+ip vrf forwarding VPN-B
+ip add 10.5.5.5 255.255.255.255
+no shut
+
+int fa0/0
+ip add 10.0.56.1 255.255.255.252
+no shut 
+mpls ip
+
+int fa1/0
+ip vrf forwarding VPN-A
+ip add 10.0.15.2 255.255.255.252
+no shut
+
+int fa2/0
+ip vrf forwarding VPN-B
+ip add 10.0.25.2 255.255.255.252
+no shut
+
+int fa3/0
+ip vrf forwarding VPN-C
+ip add 10.0.35.2 255.255.255.252
+no shut
+
+router ospf 1
+router-id 10.5.5.5
+network 10.5.5.5 0.0.0.0 area 0
+network 10.0.56.0 0.0.0.3 area 0
+
+router bgp 65144
+no bgp default ipv4-unicast
+neighbor 10.8.8.8 remote-as 65144
+neighbor 10.8.8.8 update-source lo0
+
+address-family ipv4 unicast vrf VPN-B
+redistribute ospf 100 vrf VPN-B
+exit
+
+address-family ipv4 unicast vrf VPN-C
+neighbor 10.0.35.1 remote-as 65001
+neighbor 10.0.35.1 activate
+redistribute connected
+exit
+
+address-family vpnv4
+neighbor 10.0.0.0 activate
+neighbor 10.0.0.0 send-community both
+exit
+
+address-family ipv4 unicast vrf VPN-A
+redistribute rip metric 1
+redistribute connected
+exit
+
+
+router rip
+address-family ipv4 vrf VPN-A
+version 2
+no auto-summary 
+network 10.0.0.0
+exit
+
+
+router ospf 100 vrf VPN-B
+router-id 10.5.5.5
+log-adjacency-changes
+network 10.0.25.0 0.0.0.3 area 0
+network 10.5.5.5 0.0.0.0 area 0
+
+
+
+
+
+
+
+
+ 
+
+
+ 
+
+
+
+host R6
+int lo0
+ip add 10.6.6.6 255.255.255.255
+
+int fa0/0
+ip address 10.0.56.2 255.255.255.252
+no shut
+mpls ip
+
+int fa1/0
+ip address 10.0.67.2 255.255.255.252
+no shut
+mpls ip
+
+router ospf 1
+router-id 10.6.6.6
+network 10.6.6.6 0.0.0.0 area 0
+network 10.0.56.0 0.0.0.3 area 0
+network 10.0.67.0  0.0.0.3 area 0
+
+
+host R7
+int lo0
+ip add 10.7.7.7 255.255.255.255
+
+int fa0/0
+ip address 10.0.78.2 255.255.255.252
+no shut
+mpls ip
+
+int fa1/0
+ip address 10.0.67.1 255.255.255.252
+no shut
+mpls ip
+
+router ospf 1
+router-id 10.7.7.7
+network 10.7.7.7 0.0.0.0 area 0
+network 10.0.78.0 0.0.0.3 area 0
+network 10.0.67.0  0.0.0.3 area 0
+
+
+
+host R8-PE
+int lo0
+ip add 10.8.8.8 255.255.255.255
+
+lo1
+ip vrf forward VPN-A
+ip add 10.8.8.8 255.255.255.255
+
+int fa0/0
+ip address 10.0.78.1 255.255.255.252
+no shut
+mpls ip
+
+int fa1/0
+ip vrf forwarding VPN-A
+ip add 10.0.89.1 255.255.255.252
+no shut
+
+int fa2/0
+ip vrf forwarding VPN-B
+ip add 10.0.108.1 255.255.255.252
+no shut
+
+int fa3/0
+ip vrf forwarding VPN-C
+ip add 10.0.118.1 255.255.255.252
+no shut
+
+router ospf 1
+router-id 10.8.8.8
+network 10.8.8.8 0.0.0.0 area 0
+network 10.0.78.0 0.0.0.3 area 0 
+
+ip vrf VPN-A
+rd 65144:21
+route-target export 65144:21
+route-target import 65144:11
+
+ip vrf VPN-B
+rd 65144:22
+route-target export 65144:22
+route-target import 65144:12
+
+ip vrf VPN-C
+rd 65144:23
+route-target export 65144:23
+route-target import 65144:13
+
+router ospf 100 vrf VPN-B
+router-id 10.8.8.8
+log-adjacency-changes
+redistribute bgp 65144 subnets
+network 10.0.108.0 0.0.0.3 area 0
+network 10.8.8.8 0.0.0.0 area 0
+
+router bgp 65144
+no bgp default ipv4-unicast
+neighbor 10.5.5.5 remote-as 65144
+neighbor 10.5.5.5 update-source lo0
+
+address-family vpnv4
+neighbor 10.0.0.0 activate
+neighbor 10.0.0.0 send-community both
+exit
+
+address-family ipv4 unicast vrf VPN-A
+redistribute rip metric 1
+redistribute connected
+exit
+
+address-family ipv4 unicast vrf VPN-B
+redistribute ospf 100 vrf VPN-B
+exit
+
+address-family ipv4 unicast vrf VPN-C
+neighbor 10.0.35.1 remote-as 65001
+neighbor 10.0.35.1 activate
+redistribute connected
+
+
+
+
+
+

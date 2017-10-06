@@ -1,0 +1,294 @@
+mpls_te_configs
+
+====================================================
+R1
+
+conf t
+
+mpls traffic-eng tunnels
+
+int lo0
+ip add 10.1.1.1 255.255.255.255
+
+int f0/0
+no shut
+ip add 192.168.1.1 255.255.255.0
+mpls traffic-eng tunnels
+ip rsvp bandwidth
+
+int f1/0
+no shut
+ip add 10.0.12.1 255.255.255.252
+mpls traffic-eng tunnels
+ip rsvp bandwidth
+
+router ospf 1
+router-id 10.1.1.1
+network 0.0.0.0 0.0.0.0 area 0
+mpls traffic-eng area 0
+mpls traffic-eng router-id lo0
+
+end
+wr
+
+====================================================
+R2
+
+conf t
+
+mpls traffic-eng tunnels
+
+int lo0
+ip add 10.2.2.2 255.255.255.255
+
+int f1/0
+no shut
+ip add 10.0.12.2 255.255.255.252
+mpls traffic-eng tunnels
+ip rsvp bandwidth
+
+int f0/0
+no shut
+ip add 10.0.23.1 255.255.255.252
+mpls traffic-eng tunnels
+ip rsvp bandwidth
+
+int f2/0
+no shut
+ip add 10.0.26.1 255.255.255.252
+mpls traffic-eng tunnels
+ip rsvp bandwidth
+
+router ospf 1
+router-id 10.2.2.2
+network 0.0.0.0 0.0.0.0 area 0
+mpls traffic-eng area 0
+mpls traffic-eng router-id lo0
+
+end
+wr
+
+====================================================
+R3
+
+conf t
+mpls traffic-eng tunnels
+
+int lo0
+ip add 10.3.3.3 255.255.255.255
+
+int f1/0
+no shut
+ip add 10.0.34.1 255.255.255.252
+mpls traffic-eng tunnels
+ip rsvp bandwidth
+
+int f0/0
+no shut
+ip add 10.0.23.2 255.255.255.252
+mpls traffic-eng tunnels
+ip rsvp bandwidth
+
+router ospf 1
+router-id 10.3.3.3
+network 0.0.0.0 0.0.0.0 area 0
+mpls traffic-eng area 0
+mpls traffic-eng router-id lo0
+
+end
+wr
+
+
+====================================================
+R4
+
+conf t
+mpls traffic-eng tunnels
+
+int lo0
+ip add 10.4.4.4 255.255.255.255
+
+int f1/0
+no shut
+ip add 10.0.34.2 255.255.255.252
+mpls traffic-eng tunnels
+ip rsvp bandwidth
+
+int f0/0
+no shut
+ip add 10.0.45.1 255.255.255.252
+mpls traffic-eng tunnels
+ip rsvp bandwidth
+
+int f2/0
+no shut
+ip add 10.0.48.1 255.255.255.252
+mpls traffic-eng tunnels
+ip rsvp bandwidth
+
+router ospf 1
+router-id 10.4.4.4
+network 0.0.0.0 0.0.0.0 area 0
+mpls traffic-eng area 0
+mpls traffic-eng router-id lo0
+
+
+end
+wr
+
+
+====================================================
+R5
+
+conf t
+mpls traffic-eng tunnels
+
+int lo0
+ip add 10.5.5.5 255.255.255.255
+
+int f1/0
+no shut
+ip add 192.168.5.1 255.255.255.0
+mpls traffic-eng tunnels
+ip rsvp bandwidth
+
+int f0/0
+no shut
+ip add 10.0.45.2 255.255.255.252
+mpls traffic-eng tunnels
+ip rsvp bandwidth
+
+router ospf 1
+router-id 10.5.5.5
+network 0.0.0.0 0.0.0.0 area 0
+mpls traffic-eng area 0
+mpls traffic-eng router-id lo0
+
+
+end
+wr
+
+
+
+
+
+
+====================================================
+R6
+
+conf t
+mpls traffic-eng tunnels
+
+int lo0
+ip add 10.6.6.6 255.255.255.255
+
+int f2/0
+no shut
+ip add 10.0.26.2 255.255.255.252
+mpls traffic-eng tunnels
+ip rsvp bandwidth
+
+int f0/0
+no shut
+ip add 10.0.67.1 255.255.255.252
+mpls traffic-eng tunnels
+ip rsvp bandwidth
+
+router ospf 1
+router-id 10.6.6.6
+network 0.0.0.0 0.0.0.0 area 0
+mpls traffic-eng area 0
+mpls traffic-eng router-id lo0
+
+end
+wr
+
+
+
+====================================================
+R7
+
+conf t
+mpls traffic-eng tunnels
+
+int lo0
+ip add 10.7.7.7 255.255.255.255
+
+int f1/0
+no shut
+ip add 10.0.78.1 255.255.255.252
+mpls traffic-eng tunnels
+ip rsvp bandwidth
+
+int f0/0
+no shut
+ip add 10.0.67.2 255.255.255.252
+mpls traffic-eng tunnels
+ip rsvp bandwidth
+
+router ospf 1
+router-id 10.7.7.7
+network 0.0.0.0 0.0.0.0 area 0
+mpls traffic-eng area 0
+mpls traffic-eng router-id lo0
+
+end
+wr
+
+
+
+====================================================
+R8
+
+conf t
+mpls traffic-eng tunnels
+
+int lo0
+ip add 10.8.8.8 255.255.255.255
+
+int f1/0
+no shut
+ip add 10.0.78.2 255.255.255.252
+mpls traffic-eng tunnels
+ip rsvp bandwidth
+
+int f2/0
+no shut
+ip add 10.0.48.2 255.255.255.252
+mpls traffic-eng tunnels
+ip rsvp bandwidth
+
+router ospf 1
+router-id 10.8.8.8
+network 0.0.0.0 0.0.0.0 area 0
+mpls traffic-eng area 0
+mpls traffic-eng router-id lo0
+
+end
+wr
+
+
+
+======
+R1
+
+conf t
+
+int Tunnel1
+ip unnumbered lo0
+tunnel mode mpls traffic-eng
+tunnel destination 10.5.5.5
+tunnel mpls traffic-eng autoroute announce
+tunnel mpls traffic-eng path-option 1 explicit name GO-TO-R5
+
+
+ip explicit-path name GO-TO-R5
+next-address 10.2.2.2
+next-address 10.6.6.6
+next-address 10.7.7.7
+next-address 10.8.8.8
+next-address 10.4.4.4
+
+
+end
+wr

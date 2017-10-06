@@ -1,0 +1,61 @@
+ipv6 unicast-routing
+
+interface lo0
+ip address 10.11.11.11 255.255.255.255
+no shut
+
+
+interface FastEthernet0/0
+ ip address 10.11.112.1 255.255.255.252
+ ipv6 address FC00:0017:112::0/127
+ duplex half
+ no shut
+
+interface FastEthernet1/0
+ ip address 10.11.92.2 255.255.255.252
+ ipv6 address FC00:0017:92::1/127
+ duplex half
+ no shut
+
+interface FastEthernet6/0
+ ip address 172.11.11.1 255.255.255.0
+ ipv6 address FC00:0011:BBBB::/120
+ duplex half
+ no shut
+
+router ospf 1
+ router-id 10.11.11.11
+ log-adjacency-changes
+ network 10.11.11.11 0.0.0.0 area 0
+ network 10.11.112.0 0.0.0.3 area 0
+ network 10.11.92.0 0.0.0.3 area 0
+
+
+
+router bgp 65114
+ no auto-summary
+ no synchronization
+ bgp router-id 10.11.11.11
+ bgp log-neighbor-changes
+
+ network 10.11.11.11 mask 255.255.255.255
+ network 172.11.11.0 mask 255.255.255.0
+
+ neighbor 10.11.9.9 remote-as 65114
+ neighbor 10.11.9.9 update-source Loopback0
+ neighbor 10.11.9.9 next-hop-self
+
+
+ neighbor 10.11.112.2 remote-as 65115
+ 
+
+
+neighbor FC00:0011:911::0 remote-as 65114
+neighbor FC00:0011:112::1 remote-as 65115
+
+address-family ipv6
+ neighbor FC00:0011:911:: activate
+ neighbor FC00:0011:112::1 activate 
+ network FC00:0011:BBBB::/120
+
+
