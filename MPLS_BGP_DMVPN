@@ -1,0 +1,535 @@
+MPLS bgp dmvpn configs
+
+##################R1####################
+
+conf t
+
+int lo0
+ip add 10.1.1.1 255.255.255.255
+
+int f0/0
+no shut
+ip add 192.168.1.1 255.255.255.0
+
+int f1/0
+no shut
+ip add 10.0.12.1 255.255.255.0
+
+interface tunnel 0
+ip address 172.16.0.1 255.255.255.0
+tunnel source 10.0.12.1
+tunnel mode gre multipoint
+ip nhrp network-id 1
+
+ip route 0.0.0.0 0.0.0.0 10.0.12.5
+
+router bgp 65100
+network 192.168.1.0
+neighbor HUB-to-SPOKES peer-group
+neighbor HUB-to-SPOKES remote-as 65100
+neighbor HUB-to-SPOKES route-reflector-client
+bgp listen range 172.16.0.0/24 peer-group HUB-to-SPOKES
+
+
+end
+wr
+
+
+###################R2###################
+
+conf t
+
+int lo0
+ip add 10.2.2.2 255.255.255.255
+
+int f0/0
+no shut
+ip add 192.168.2.1 255.255.255.0
+
+int f1/0
+no shut
+ip add 10.0.12.2 255.255.255.0
+
+interface tunnel 0
+ip address 172.16.0.2 255.255.255.0
+tunnel source 10.0.12.2
+tunnel mode gre multipoint
+ip nhrp map 172.16.0.1 10.0.12.1
+ip nhrp network-id 1
+ip nhrp nhs 172.16.0.1
+exit
+
+router bgp 65100
+nighbor 172.16.0.1 remote-as 65100
+network 192.168.2.0
+
+
+end
+wr
+
+
+
+#################R3####################
+
+conf t
+
+int lo0
+ip add 10.3.3.3 255.255.255.255
+
+int f0/0
+no shut
+ip add 192.168.3.1 255.255.255.0
+
+int f1/0
+no shut
+ip add 10.0.34.1 255.255.255.0
+
+end
+wr
+
+
+R4
+conf t
+
+int lo0
+ip add 10.4.4.4 255.255.255.255
+
+int f0/0
+no shut
+ip add 192.168.4.1 255.255.255.0
+
+int f1/0
+no shut
+ip add 10.0.34.2 255.255.255.0
+
+end
+wr
+
+
+
+############R5#####################
+
+
+
+conf t
+
+int lo0
+ip add 10.5.5.5 255.255.255.255
+isis circuit-type level-2-only
+
+ip vrf DATA-CENTRE-A
+rd 65144:1
+route-target export 65144:1
+route-target import 65144:11
+route-target import 65144:12
+
+int f0/0
+no shut
+ip vrf forwarding DATA-CENTRE-A
+ip add 10.0.12.1 255.255.255.0
+exit
+
+router isis CORE
+net 47.0000.5555.5555.5555.00
+is-type level-2-only
+
+router bgp 65144
+no bgp default ipv4-unicast
+neighbor CORE peer-group
+neighbor CORE remote-as 65144
+neighbor CORE 10.7.7.7 peer-group CORE
+neighbor CORE 10.8.8.8 peer-group CORE
+neighbor CORE description "route reflectors"
+
+address-family vpvn4 unicast
+neighbor CORE send-community extended
+neighbor 10.7.7.7 activate
+neighbor 10.8.8.8 activate
+
+address-family ipv4 unicast vrf DATA-CENTRE-A
+redistribute connected
+
+int f3/0
+no shut
+ip add 10.0.57.1 255.255.255.252
+mpls ip
+ip router isis CORE
+isis circuit-type level-2-only
+isis network point-to-point
+
+int f4/0
+no shut
+ip add 10.0.59.1 255.255.255.252
+mpls ip
+ip router isis CORE
+isis circuit-type level-2-only
+isis network point-to-point
+
+
+#######R6#################
+
+
+int lo0
+ip add 10.6.6.6 255.255.255.255
+isis circuit-type level-2-only
+
+ip vrf DATA-CENTRE-A
+rd 65144:1
+route-target export 65144:2
+route-target import 65144:13
+route-target import 65144:14
+
+int f0/0
+no shut
+ip vrf forwarding DATA-CENTRE-A
+ip add 10.0.34.6 255.255.255.0
+exit
+
+router isis CORE
+net 47.0000.6666.6666.6666.00
+is-type level-2-only
+
+int f3/0
+no shut
+ip add 10.0.68.1 255.255.255.252
+mpls ip
+ip router isis CORE
+isis circuit-type level-2-only
+isis network point-to-point
+
+int f4/0
+no shut
+ip add 10.0.106.1 255.255.255.252
+mpls ip
+ip router isis CORE
+isis circuit-type level-2-only
+isis network point-to-point
+
+
+#######R7#################
+
+int lo0
+ip add 10.7.7.7 255.255.255.255
+ip router isis core
+isis circuit-type level-2-only
+
+router isis CORE
+net 47.0000.7777.7777.7777.00
+is-type level-2-only
+
+router bgp 65144
+no bgp default ipv4-unicast
+bgp router-id 10.7.7.7
+bgp cluster-id 10.7.7.7
+neighbor CORE peer-group
+neighbor CORE remote-as  65144
+neighbor CORE update-source lo0
+neighbor 10.5.5.5 peer-group CORE
+neighbor 10.6.6.6 peer-group CORE
+neighbor 10.9.9.9 peer-group CORE
+neighbor 10.8.8.8 peer-group CORE
+neighbor 10.10.10.10 peer-group CORE
+
+addresss-family vpnv4
+neighbor CORE send-community extended
+neighbor CORE route-reflector-client
+neighbor 10.5.5.5 activate
+neighbor 10.6.6.6 activate
+neighbor 10.8.8.8 activate
+neighbor 10.9.9.9 activate
+neighbor 10.10.10.10 activate
+exit-address-family
+
+
+int f0/0
+no shut
+ip add 10.0.78.2 255.255.255.252
+mpls ip
+ip router isis CORE
+isis circuit-type level-2-only
+isis network point-to-point
+
+int f1/0
+no shut
+ip add 10.0.79.2 255.255.255.252
+mpls ip
+ip router isis CORE
+isis circuit-type level-2-only
+isis network point-to-point
+
+int f2/0
+no shut
+ip add 10.0.57.2 255.255.255.252
+mpls ip
+ip router isis CORE
+isis circuit-type level-2-only
+isis network point-to-point
+
+#######R8#################
+
+
+int lo0
+ip add 10.8.8.8 255.255.255.255
+ip router isis core
+isis circuit-type level-2-only
+
+router isis CORE
+net 47.0000.8888.8888.8888.00
+is-type level-2-only
+
+router bgp 65144
+no bgp default ipv4-unicast
+bgp router-id 10.8.8.8
+bgp cluster-id 10.8.8.8
+neighbor CORE peer-group
+neighbor CORE remote-as  65144
+neighbor CORE update-source lo0
+neighbor 10.5.5.5 peer-group CORE
+neighbor 10.6.6.6 peer-group CORE
+neighbor 10.9.9.9 peer-group CORE
+neighbor 10.7.7.7 peer-group CORE
+neighbor 10.10.10.10 peer-group CORE
+
+addresss-family vpnv4
+neighbor CORE send-community extended
+neighbor CORE route-reflector-client
+neighbor 10.5.5.5 activate
+neighbor 10.6.6.6 activate
+neighbor 10.7.7.7 activate
+neighbor 10.9.9.9 activate
+neighbor 10.10.10.10 activate
+exit-address-family
+
+
+int f0/0
+no shut
+ip add 10.0.78.1 255.255.255.252
+mpls ip
+ip router isis CORE
+isis circuit-type level-2-only
+isis network point-to-point
+
+int f1/0
+no shut
+ip add 10.0.108.2 255.255.255.252
+mpls ip
+ip router isis CORE
+isis circuit-type level-2-only
+isis network point-to-point
+
+int f2/0
+no shut
+ip add 10.0.68.2 255.255.255.252
+mpls ip
+ip router isis CORE
+isis circuit-type level-2-only
+isis network point-to-point
+
+#######R9#################
+
+
+int lo0
+ip add 10.9.9.9 255.255.255.255
+isis circuit-type level-2-only
+
+ip vrf BRANCH-A
+rd 65144:11
+route-target export 65144:11
+route-target import 65144:1
+
+
+ip vrf BRANCH-B
+rd 65144:12
+route-target export 65144:12
+route-target import 65144:1
+
+
+int f1/0
+no shut
+ip vrf forwarding BRANCH-A
+ip add 10.0.119.1 255.255.255.252
+
+int f0/0
+no shut
+ip vrf forwarding BRANCH-B
+ip add 10.0.129.1 255.255.255.252
+
+router isis CORE
+net 47.0000.9999.9999.9999.00
+is-type level-2-only
+
+router bgp 65144
+no bgp default ipv4-unicast
+neighbor CORE peer-group
+neighbor CORE remote-as 64144
+neighbor CORE update-source lo0
+neighbor 10.7.7.7 peer-group CORE
+neighbor 10.8.8.8 peer-group CORE
+
+address-family vpnv4 unicast
+neighbor CORE send-community extended
+neighbor 10.7.7.7 activate
+neighbor 10.8.8.8 activate
+address-family-exit
+
+address-family vpnv4 unicast vrf BRANCH-A
+redistribute connected
+address-family-exit
+
+address-family vpnv4 unicast vrf BRANCH-B
+redistribute connected
+address-family-exit
+
+
+
+
+
+int f3/0
+no shut
+ip add 10.0.59.2 255.255.255.252
+mpls ip
+ip router isis CORE
+isis circuit-type level-2-only
+isis network point-to-point
+
+int f2/0
+no shut
+ip add 10.0.97.1 255.255.255.252
+mpls ip
+ip router isis CORE
+isis circuit-type level-2-only
+isis network point-to-point
+
+#######R10#################
+
+
+int lo0
+ip add 10.10.10.10 255.255.255.255
+isis circuit-type level-2-only
+
+ip vrf BRANCH-C
+rd 65144:13
+route-target export 65144:13
+route-target import 65144:2
+
+
+ip vrf BRANCH-D
+rd 65144:14
+route-target export 65144:14
+route-target import 65144:2
+
+
+int f1/0
+no shut
+ip vrf forwarding BRANCH-C
+ip add 10.0.131.1 255.255.255.252
+
+int f0/0
+no shut
+ip vrf forwarding BRANCH-D
+ip add 10.0.141.1 255.255.255.252
+
+router isis CORE
+net 47.0000.AAAA.AAAA.AAAA.00
+is-type level-2-only
+
+router bgp 65144
+no bgp default ipv4-unicast
+neighbor CORE peer-group
+neighbor CORE remote-as 64144
+neighbor CORE update-source lo0
+neighbor 10.7.7.7 peer-group CORE
+neighbor 10.8.8.8 peer-group CORE
+
+address-family vpnv4 unicast
+neighbor CORE send-community extended
+neighbor 10.7.7.7 activate
+neighbor 10.8.8.8 activate
+address-family-exit
+
+address-family vpnv4 unicast vrf BRANCH-C
+redistribute connected
+address-family-exit
+
+address-family vpnv4 unicast vrf BRANCH-D
+redistribute connected
+address-family-exit
+
+
+int f3/0
+no shut
+ip add 10.0.108.2 255.255.255.252
+mpls ip
+ip router isis CORE
+isis circuit-type level-2-only
+isis network point-to-point
+
+int f2/0
+no shut
+ip add 10.0.108.1 255.255.255.252
+mpls ip
+ip router isis CORE
+isis circuit-type level-2-only
+isis network point-to-point
+
+#######R11#################
+
+
+int lo0
+ip add 10.11.11.11 255.255.255.255
+
+int f1/0
+ip add 10.0.119.2 255.255.255.252
+no shut
+
+int f0/0
+ip add 192.168.11.1 255.255.255.0
+no shut
+
+router bgp 65100
+bgp log-neighbor changes
+neighbor 172.16.0.1 remote-as 65100
+network 192.168.11.0
+
+interface tunnel 0
+ip address 172.16.0.11 255.255.255.0
+tunnel source 10.0.119.2
+tunnel mode gre multipoint
+ip nhrp map 172.16.0.1 10.0.12.1
+ip nhrp network-id 1
+ip nhrp nhs 172.16.0.1
+exit
+
+ip route 0.0.0.0 0.0.0.0 10.0.119.1
+
+
+
+#######R12#################
+
+
+int lo0
+ip add 10.12.12.12 255.255.255.255
+
+int f1/0
+ip add 10.0.129.2 255.255.255.252
+no shut
+
+int f0/0
+ip add 192.168.12.1 255.255.255.0
+no shut
+
+router bgp 65100
+bgp log-neighbor changes
+neighbor 172.16.0.1 remote-as 65100
+network 192.168.12.0
+
+interface tunnel 0
+ip address 172.16.0.12 255.255.255.0
+tunnel source 10.0.129.2
+tunnel mode gre multipoint
+ip nhrp map 172.16.0.1 10.0.12.1
+ip nhrp network-id 1
+ip nhrp nhs 172.16.0.1
+
+
+ip route 0.0.0.0 0.0.0.0  10.0.129.1
