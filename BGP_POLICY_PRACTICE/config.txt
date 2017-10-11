@@ -1,0 +1,6 @@
+router bgp 1
+ neighbor 10.0.45.1 remote-as 123
+ neighbor 10.0.45.1 filter-list 1 out
+
+
+ ip as-path access-list 1 deny ^123$
