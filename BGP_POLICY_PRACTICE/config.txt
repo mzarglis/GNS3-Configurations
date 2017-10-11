@@ -1,6 +1,9 @@
+###########Filter Lists#####################
+
 router bgp 1
  neighbor 10.0.45.1 remote-as 123
- neighbor 10.0.45.1 filter-list 1 out
+ neighbor 10.0.56.2 remote-as 2
+ neighbor 10.0.56.2 filter-list 1 out
 
 
  ip as-path access-list 1 deny ^123$
@@ -8,4 +11,54 @@ router bgp 1
  ip as-path access-list 1 permit 101$|201$|301$
  ip as-path access-list 1 permit .01$
  ip as-path access-list 1 permit [1-]01$
- 
+
+
+ ###########Distribution-List#####################
+
+router bgp 1
+ neighbor 10.0.45.1 remote-as 123
+ neighbor 10.0.56.2 remote-as 2
+ neighbor 10.0.56.2 distribute-list EXAMPLE out
+
+
+ ip access-list standard EXAMPLE
+  permit 152.0.0.0 1.255.255.255
+
+ ip access-list standard NO-MARTIANS
+ deny 192.168.0.0  0.0.255.255
+ deny 172.16.0.0   0.0.255.255
+ deny 10.0.0.0     0.255.255.255
+ deny 169.254.0.0  0.0.255.55
+ allow any
+
+
+  ###########Prefix-List#####################
+
+router bgp 1
+ neighbor 10.0.45.1 remote-as 123
+ neighbor 10.0.56.2 remote-as 2
+ neighbor 10.0.56.2 prefix-list EXAMPLE-01 out
+  
+ ip prefix-list XAMPLE-01 seq 5 permit 101.0.0.0/9 ge 10 le 111
+ ip prefix-list XAMPLE-01 seq 10 permit 101.0.0.0/12 
+
+
+
+  ###########route-map#####################
+
+
+ router bgp 1
+  neighbor 10.0.45.1 remote-as 123
+  neighbor 10.0.56.2 remote-as 2
+  neighbor 10.0.56.2 route-map EXAMPLE-01 out
+
+
+route-map EXAMPLE-01 permit 10
+match ip adress 1
+set metric 123
+route-map EXAMPLE-01 permit 20
+match as-path 1
+set metric 101
+route-map EXAMPLE-01 permit 30
+match ip address prefix-list EXAMPLE-01
+set metric 777
